@@ -58,14 +58,22 @@ void DescriptorSetLayout::initGammaDescriptorSetLayout() {
     VkDevice device = context.getDevice();
 
 
+    VkDescriptorSetLayoutBinding gammaBufferBinding{};
+    gammaBufferBinding.binding = 0;
+    gammaBufferBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    gammaBufferBinding.descriptorCount = 1;
+    gammaBufferBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    gammaBufferBinding.pImmutableSamplers = nullptr;
+
+
     VkDescriptorSetLayoutBinding inputAttachmentBinding{};
-    inputAttachmentBinding.binding = 0;
+    inputAttachmentBinding.binding = 1;
     inputAttachmentBinding.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
     inputAttachmentBinding.descriptorCount = 1;
     inputAttachmentBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
     inputAttachmentBinding.pImmutableSamplers = nullptr;
 
-    std::array<VkDescriptorSetLayoutBinding, 1> bindings = {inputAttachmentBinding};
+    std::array<VkDescriptorSetLayoutBinding, 2> bindings = {gammaBufferBinding, inputAttachmentBinding};
 
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;

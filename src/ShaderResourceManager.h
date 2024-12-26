@@ -26,5 +26,6 @@ private:
 
 
 	void initGammaShaderResourceManager(VkDescriptorSetLayout descriptorSetLayout, VkImageView resolveImageView);
+	void createGammaUniformBuffers();
 	void createGammaDescriptorSets(VkDescriptorSetLayout descriptorSetLayout, VkImageView resolveImageView);
 };

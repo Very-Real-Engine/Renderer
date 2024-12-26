@@ -396,9 +396,19 @@ void Renderer::recordGammaCommandBuffer(Scene* scene, VkCommandBuffer commandBuf
         nullptr
     );
 
-    // 풀스크린 쿼드 드로우
+    static float x = 1.0f;
+    static float d = 0.005f;
+    GammaUniformBufferObject gammaUbo{};
+    gammaUbo.gamma = x;
+    x += d;
+    if (x > 2.2f) {
+        d = -0.005f;
+    } else if (x < 1.0f) {
+        d = 0.005f;
+    }
+    m_gammaShaderResourceManager->getUniformBuffers()[currentFrame]->updateUniformBuffer(&gammaUbo, sizeof(gammaUbo));
 
-    // 유니폼버퍼 넣어주기
+    // 풀스크린 쿼드 드로우
     vkCmdDraw(commandBuffer, 6, 1, 0, 0);
 
     // 렌더 패스 종료

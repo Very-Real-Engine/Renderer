@@ -1,10 +1,15 @@
 #version 450
 
-layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInput resolvedImage;
+layout (binding = 0) uniform GammaUBO {
+    float gamma;
+};
+
+layout(input_attachment_index = 0, set = 0, binding = 1) uniform subpassInput resolvedImage;
 
 layout(location = 0) out vec4 outColor;
 
-const float gamma = 2.2;
+// const float gamma = 2.2;
+
 
 void main() {
     vec3 color = subpassLoad(resolvedImage).rgb;

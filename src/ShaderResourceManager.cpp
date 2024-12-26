@@ -116,9 +116,19 @@ std::unique_ptr<ShaderResourceManager> ShaderResourceManager::createGammaShaderR
 
 
 void ShaderResourceManager::initGammaShaderResourceManager(VkDescriptorSetLayout descriptorSetLayout, VkImageView resolveImageView) {
+    createGammaUniformBuffers();
     createGammaDescriptorSets(descriptorSetLayout, resolveImageView);
 }
 
+void ShaderResourceManager::createGammaUniformBuffers() {
+    VkDeviceSize bufferSize = sizeof(GammaUniformBufferObject);
+
+    m_uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        m_uniformBuffers[i] = UniformBuffer::createUniformBuffer(bufferSize);
+    }
+}
 
 void ShaderResourceManager::createGammaDescriptorSets(VkDescriptorSetLayout descriptorSetLayout, VkImageView resolveImageView) {
     auto& context = VulkanContext::getContext();
@@ -140,20 +150,34 @@ void ShaderResourceManager::createGammaDescriptorSets(VkDescriptorSetLayout desc
     }
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+
+        VkDescriptorBufferInfo bufferInfo{};
+        bufferInfo.buffer = m_uniformBuffers[i]->getBuffer();
+        bufferInfo.offset = 0;
+        bufferInfo.range = sizeof(GammaUniformBufferObject);
+
         VkDescriptorImageInfo inputAttachmentInfo{};
         inputAttachmentInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         inputAttachmentInfo.imageView = resolveImageView; // Resolve 이미지 뷰 사용
         inputAttachmentInfo.sampler = VK_NULL_HANDLE; // Input Attachment는 샘플러 불필요
 
-        VkWriteDescriptorSet descriptorWrite{};
-        descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrite.dstSet = descriptorSets[i];
-        descriptorWrite.dstBinding = 0; // Input Attachment는 바인딩 0번 사용
-        descriptorWrite.dstArrayElement = 0;
-        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
-        descriptorWrite.descriptorCount = 1;
-        descriptorWrite.pImageInfo = &inputAttachmentInfo;
 
-        vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
+        std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
+
+        descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[0].dstSet = descriptorSets[i];
+        descriptorWrites[0].dstBinding = 0;
+        descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorWrites[0].descriptorCount = 1;
+        descriptorWrites[0].pBufferInfo = &bufferInfo;
+
+        descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[1].dstSet = descriptorSets[i];
+        descriptorWrites[1].dstBinding = 1;
+        descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+        descriptorWrites[1].descriptorCount = 1;
+        descriptorWrites[1].pImageInfo = &inputAttachmentInfo;
+
+        vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
     }
 }
