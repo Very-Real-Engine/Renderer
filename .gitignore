@@ -1,0 +1,5 @@
+.vscode
+build/
+Engine_debug.exe
+Engine_release.exe
+memo
