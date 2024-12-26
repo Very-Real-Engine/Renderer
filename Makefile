@@ -1,10 +1,15 @@
 NAME :=	Engine
+SRC :=	$(wildcard src/*.cpp)
+HDR :=	$(wildcard src/*.h)
 
 all: $(NAME)_debug
 
 release: $(NAME)_release
 
-$(NAME)_debug:
+run : $(NAME)_debug
+	@./$(NAME)_debug.exe
+
+$(NAME)_debug: $(SRC) $(HDR)
 	@cmake -Bbuild -DCMAKE_BUILD_TYPE=Debug .
 	@cmake --build build --config Debug
 	@mv ./build/Debug/$(NAME).exe ./$(NAME)_debug.exe
