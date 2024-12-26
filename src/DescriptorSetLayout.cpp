@@ -45,3 +45,34 @@ void DescriptorSetLayout::initDescriptorSetLayout() {
         throw std::runtime_error("failed to create descriptor set layout!");
     }
 }
+
+
+std::unique_ptr<DescriptorSetLayout> DescriptorSetLayout::createGammaDescriptorSetLayout() {
+    std::unique_ptr<DescriptorSetLayout> descriptorSetLayout = std::unique_ptr<DescriptorSetLayout>(new DescriptorSetLayout());
+    descriptorSetLayout->initGammaDescriptorSetLayout();
+    return descriptorSetLayout;
+}
+
+void DescriptorSetLayout::initGammaDescriptorSetLayout() {
+    auto& context = VulkanContext::getContext();
+    VkDevice device = context.getDevice();
+
+
+    VkDescriptorSetLayoutBinding inputAttachmentBinding{};
+    inputAttachmentBinding.binding = 0;
+    inputAttachmentBinding.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+    inputAttachmentBinding.descriptorCount = 1;
+    inputAttachmentBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    inputAttachmentBinding.pImmutableSamplers = nullptr;
+
+    std::array<VkDescriptorSetLayoutBinding, 1> bindings = {inputAttachmentBinding};
+
+    VkDescriptorSetLayoutCreateInfo layoutInfo{};
+    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
+    layoutInfo.pBindings = bindings.data();
+
+    if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create gamma descriptor set layout!");
+    }
+}

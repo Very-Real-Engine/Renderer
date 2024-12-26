@@ -28,39 +28,62 @@ void Renderer::init(GLFWwindow* window) {
     swapChainExtent = m_swapChain->getSwapChainExtent();
     swapChainImageViews = m_swapChain->getSwapChainImageViews();
 
+
     m_syncObjects = SyncObjects::createSyncObjects();
     imageAvailableSemaphores = m_syncObjects->getImageAvailableSemaphores();
     renderFinishedSemaphores = m_syncObjects->getRenderFinishedSemaphores();
     inFlightFences = m_syncObjects->getInFlightFences();
 
-    m_renderPass = RenderPass::createRenderPass(swapChainImageFormat);
-    renderPass = m_renderPass->getRenderPass();
+    // m_renderPass = RenderPass::createRenderPass(swapChainImageFormat);
+    // renderPass = m_renderPass->getRenderPass();
 
+    m_gammaRenderPass = RenderPass::createGammaRenderPass(swapChainImageFormat);
+    gammaRenderPass = m_gammaRenderPass->getRenderPass();
+
+    m_swapChainFrameBuffers = FrameBuffers::createSwapChainFrameBuffers(m_swapChain.get(), gammaRenderPass);
+    swapChainFramebuffers = m_swapChainFrameBuffers->getFramebuffers();
 
     m_descriptorSetLayout = DescriptorSetLayout::createDescriptorSetLayout();
     descriptorSetLayout = m_descriptorSetLayout->getDescriptorSetLayout();
 
-    m_pipeline = Pipeline::createPipeline(renderPass, descriptorSetLayout);
+    // gamma
+    m_gammaDescriptorSetLayout = DescriptorSetLayout::createGammaDescriptorSetLayout();
+    gammaDescriptorSetLayout = m_gammaDescriptorSetLayout->getDescriptorSetLayout();
+
+    m_gammaShaderResourceManager = ShaderResourceManager::createGammaShaderResourceManager(gammaDescriptorSetLayout, m_swapChainFrameBuffers->getResolveImageView());
+    gammaDescriptorSets = m_gammaShaderResourceManager->getDescriptorSets();
+
+    // m_pipeline = Pipeline::createPipeline(renderPass, descriptorSetLayout);
+    m_pipeline = Pipeline::createPipeline(gammaRenderPass, descriptorSetLayout);
     pipelineLayout = m_pipeline->getPipelineLayout();
     graphicsPipeline = m_pipeline->getPipeline();
 
-
+    m_gammaPipeline = Pipeline::createGammaPipeline(gammaRenderPass, gammaDescriptorSetLayout);
+    gammaPipelineLayout = m_gammaPipeline->getPipelineLayout();
+    gammaGraphicsPipeline = m_gammaPipeline->getPipeline();
 
     m_commandBuffers = CommandBuffers::createCommandBuffers();
     commandBuffers = m_commandBuffers->getCommandBuffers();
 
-    m_swapChainFrameBuffers = FrameBuffers::createSwapChainFrameBuffers(m_swapChain.get(), renderPass);
-    swapChainFramebuffers = m_swapChainFrameBuffers->getFramebuffers();
 }
 
 
 void Renderer::cleanup() {
     m_swapChainFrameBuffers->cleanup();
     m_swapChain->cleanup();
+
     m_pipeline->cleanup();
-    m_renderPass->cleanup();
+    m_gammaPipeline->cleanup();
+
+    // m_renderPass->cleanup();
+    m_gammaRenderPass->cleanup();
+
     m_shaderResourceManager->cleanup();
+    m_gammaShaderResourceManager->cleanup();
+
     m_descriptorSetLayout->cleanup();
+    m_gammaDescriptorSetLayout->cleanup();
+
     m_syncObjects->cleanup();
     VulkanContext::getContext().cleanup();
 }
@@ -102,7 +125,8 @@ void Renderer::drawFrame(Scene* scene) {
     // [Command Buffer에 명령 기록]
     // 커맨드 버퍼 초기화 및 명령 기록
     vkResetCommandBuffer(commandBuffers[currentFrame], /*VkCommandBufferResetFlagBits*/ 0); // 두 번째 매개변수인 Flag 를 0으로 초기화하면 기본 초기화 진행
-    recordCommandBuffer(scene, commandBuffers[currentFrame], imageIndex); // 현재 작업할 image의 index와 commandBuffer를 전송
+    // recordCommandBuffer(scene, commandBuffers[currentFrame], imageIndex); // 현재 작업할 image의 index와 commandBuffer를 전송
+    recordGammaCommandBuffer(scene, commandBuffers[currentFrame], imageIndex); // 현재 작업할 image의 index와 commandBuffer를 전송
 
     // [렌더링 Command Buffer 제출]
     // 렌더링 커맨드 버퍼 제출 정보 객체 생성
@@ -288,4 +312,100 @@ void Renderer::recreateSwapChain() {
 
     m_swapChainFrameBuffers->initSwapChainFrameBuffers(m_swapChain.get(), renderPass);
     swapChainFramebuffers = m_swapChainFrameBuffers->getFramebuffers();
+}
+
+
+void Renderer::recordGammaCommandBuffer(Scene* scene, VkCommandBuffer commandBuffer, uint32_t imageIndex) {
+    // 커맨드 버퍼 기록 시작
+    VkCommandBufferBeginInfo beginInfo{};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+
+    if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
+        throw std::runtime_error("failed to begin recording command buffer!");
+    }
+
+    // 렌더 패스 시작
+    VkRenderPassBeginInfo renderPassInfo{};
+    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    renderPassInfo.renderPass = gammaRenderPass;
+    renderPassInfo.framebuffer = swapChainFramebuffers[imageIndex];
+    renderPassInfo.renderArea.offset = {0, 0};
+    renderPassInfo.renderArea.extent = swapChainExtent;
+
+    std::array<VkClearValue, 2> clearValues{};
+    clearValues[0].color = {{0.0f, 0.0f, 0.0f, 1.0f}};
+    clearValues[1].depthStencil = {1.0f, 0};
+
+    renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+    renderPassInfo.pClearValues = clearValues.data();
+
+    vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+
+    /*
+     * 첫 번째 서브패스 - Object 렌더링
+     */
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+
+    VkViewport viewport{};
+    viewport.x = 0.0f;
+    viewport.y = 0.0f;
+    viewport.width = static_cast<float>(swapChainExtent.width);
+    viewport.height = static_cast<float>(swapChainExtent.height);
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+    vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+
+    VkRect2D scissor{};
+    scissor.offset = {0, 0};
+    scissor.extent = swapChainExtent;
+    vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+    const std::vector<std::shared_ptr<Object>>& objects = scene->getObjects();
+    size_t objectCount = scene->getObjectCount();
+
+    for (size_t i = 0; i < objectCount; i++) {
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[MAX_FRAMES_IN_FLIGHT * i + currentFrame], 0, nullptr);
+        UniformBufferObject ubo{};
+        ubo.model = objects[i]->getModelMatrix();
+        ubo.view = scene->getViewMatrix();
+        ubo.proj = scene->getProjMatrix(swapChainExtent);
+        ubo.proj[1][1] *= -1;
+        m_uniformBuffers[MAX_FRAMES_IN_FLIGHT * i + currentFrame]->updateUniformBuffer(&ubo, sizeof(ubo));
+        objects[i]->draw(commandBuffer);
+    }
+
+        /*
+     * 🔄 서브패스 전환
+     */
+    vkCmdNextSubpass(commandBuffer, VK_SUBPASS_CONTENTS_INLINE);
+
+    /*
+     * 🌟 두 번째 서브패스 - 감마 보정 (풀스크린 쿼드)
+     */
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, gammaGraphicsPipeline);
+
+    vkCmdBindDescriptorSets(
+        commandBuffer,
+        VK_PIPELINE_BIND_POINT_GRAPHICS,
+        gammaPipelineLayout,
+        0,
+        1,
+        &gammaDescriptorSets[currentFrame],
+        0,
+        nullptr
+    );
+
+    // 풀스크린 쿼드 드로우
+
+    // 유니폼버퍼 넣어주기
+    vkCmdDraw(commandBuffer, 6, 1, 0, 0);
+
+    // 렌더 패스 종료
+    vkCmdEndRenderPass(commandBuffer);
+
+    if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
+        throw std::runtime_error("failed to record gamma command buffer!");
+    }
+
 }

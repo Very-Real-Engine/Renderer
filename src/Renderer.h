@@ -42,24 +42,40 @@ private:
 	std::vector<VkImageView> swapChainImageViews;
 	std::unique_ptr<FrameBuffers> m_swapChainFrameBuffers;
 	std::vector<VkFramebuffer> swapChainFramebuffers;
+	
 	std::unique_ptr<RenderPass> m_renderPass;
 	VkRenderPass renderPass;
+
+	std::unique_ptr<RenderPass> m_gammaRenderPass;
+	VkRenderPass gammaRenderPass;
+
+
 	std::unique_ptr<DescriptorSetLayout> m_descriptorSetLayout;
 	VkDescriptorSetLayout descriptorSetLayout;
+	// gamma
+	std::unique_ptr<DescriptorSetLayout> m_gammaDescriptorSetLayout;
+	VkDescriptorSetLayout gammaDescriptorSetLayout;
+
+
 	std::unique_ptr<Pipeline> m_pipeline;
 	VkPipelineLayout pipelineLayout;
 	VkPipeline graphicsPipeline;
-	VkImage colorImage;
-	VkDeviceMemory colorImageMemory;
-	VkImageView colorImageView;
-	VkImage depthImage;
-	VkDeviceMemory depthImageMemory;
-	VkImageView depthImageView;
-	std::vector< std::shared_ptr<UniformBuffer> > m_uniformBuffers;
+
+	std::unique_ptr<Pipeline> m_gammaPipeline;
+	VkPipelineLayout gammaPipelineLayout;
+	VkPipeline gammaGraphicsPipeline;
+
 	VkDescriptorPool descriptorPool;
-	std::vector<VkDescriptorSet> descriptorSets;
+
 	std::unique_ptr<ShaderResourceManager> m_shaderResourceManager;
+	std::vector<VkDescriptorSet> descriptorSets;
+	std::vector< std::shared_ptr<UniformBuffer> > m_uniformBuffers;
+	
+	std::unique_ptr<ShaderResourceManager> m_gammaShaderResourceManager;
+	std::vector<VkDescriptorSet> gammaDescriptorSets;
+
 	std::unique_ptr<CommandBuffers> m_commandBuffers;
+
 	std::vector<VkCommandBuffer> commandBuffers;
 	std::unique_ptr<SyncObjects> m_syncObjects;
 	std::vector<VkSemaphore> imageAvailableSemaphores;
@@ -68,6 +84,8 @@ private:
 	uint32_t currentFrame = 0;
 
 
+
 	void init(GLFWwindow* window);
 	void recordCommandBuffer(Scene* scene, VkCommandBuffer commandBuffer, uint32_t imageIndex);
+	void recordGammaCommandBuffer(Scene* scene, VkCommandBuffer commandBuffer, uint32_t imageIndex);
 };

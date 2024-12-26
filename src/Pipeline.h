@@ -10,6 +10,8 @@ public:
 	~Pipeline() {}
 	void cleanup();
 
+	static std::unique_ptr<Pipeline> createGammaPipeline(VkRenderPass renderPass, VkDescriptorSetLayout descriptorSetLayout);
+
 	VkPipeline getPipeline() { return pipeline; }
 	VkPipelineLayout getPipelineLayout() { return pipelineLayout; }
 
@@ -19,4 +21,6 @@ private:
 
 	void initPipeline(VkRenderPass renderPass, VkDescriptorSetLayout descriptorSetLayout);
 	VkShaderModule createShaderModule(const std::vector<char>& code);
+
+	void initGammaPipeline(VkRenderPass renderPass, VkDescriptorSetLayout descriptorSetLayout);
 };

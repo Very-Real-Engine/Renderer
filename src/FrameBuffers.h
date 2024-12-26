@@ -13,6 +13,9 @@ public:
 	void initSwapChainFrameBuffers(SwapChain* swapChain, VkRenderPass renderPass);
 
 	std::vector<VkFramebuffer>& getFramebuffers() { return framebuffers; }
+	VkImageView& getColorImageView() { return colorImageView; }
+	VkImageView& getDepthImageView() { return depthImageView; }
+	VkImageView& getResolveImageView() { return resolveImageView; }
 
 private:
 	VkImage colorImage;

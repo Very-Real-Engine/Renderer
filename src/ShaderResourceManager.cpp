@@ -106,3 +106,54 @@ void ShaderResourceManager::createDescriptorSets(Scene* scene, VkDescriptorSetLa
         }
     }
 }
+
+
+std::unique_ptr<ShaderResourceManager> ShaderResourceManager::createGammaShaderResourceManager(VkDescriptorSetLayout descriptorSetLayout, VkImageView resolveImageView) {
+    std::unique_ptr<ShaderResourceManager> shaderResourceManager = std::unique_ptr<ShaderResourceManager>(new ShaderResourceManager());
+    shaderResourceManager->initGammaShaderResourceManager(descriptorSetLayout, resolveImageView);
+    return shaderResourceManager;
+}
+
+
+void ShaderResourceManager::initGammaShaderResourceManager(VkDescriptorSetLayout descriptorSetLayout, VkImageView resolveImageView) {
+    createGammaDescriptorSets(descriptorSetLayout, resolveImageView);
+}
+
+
+void ShaderResourceManager::createGammaDescriptorSets(VkDescriptorSetLayout descriptorSetLayout, VkImageView resolveImageView) {
+    auto& context = VulkanContext::getContext();
+    VkDevice device = context.getDevice();
+    VkDescriptorPool descriptorPool = context.getDescriptorPool();
+
+    std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, descriptorSetLayout);
+
+    VkDescriptorSetAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocInfo.descriptorPool = descriptorPool;
+    allocInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    allocInfo.pSetLayouts = layouts.data();
+
+    descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
+
+    if (vkAllocateDescriptorSets(device, &allocInfo, descriptorSets.data()) != VK_SUCCESS) {
+        throw std::runtime_error("failed to allocate descriptor sets!");
+    }
+
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        VkDescriptorImageInfo inputAttachmentInfo{};
+        inputAttachmentInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        inputAttachmentInfo.imageView = resolveImageView; // Resolve 이미지 뷰 사용
+        inputAttachmentInfo.sampler = VK_NULL_HANDLE; // Input Attachment는 샘플러 불필요
+
+        VkWriteDescriptorSet descriptorWrite{};
+        descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrite.dstSet = descriptorSets[i];
+        descriptorWrite.dstBinding = 0; // Input Attachment는 바인딩 0번 사용
+        descriptorWrite.dstArrayElement = 0;
+        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+        descriptorWrite.descriptorCount = 1;
+        descriptorWrite.pImageInfo = &inputAttachmentInfo;
+
+        vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
+    }
+}
