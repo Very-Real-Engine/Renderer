@@ -110,12 +110,12 @@ struct Vertex {
 	}
 };
 
-struct UniformBufferObject {
+struct GeometryPassUniformBufferObject {
 	alignas(16) glm::mat4 model;
 	alignas(16) glm::mat4 view;
 	alignas(16) glm::mat4 proj;
 };
 
-struct GammaUniformBufferObject {
+struct LightingPassUniformBufferObject {
 	alignas(16) float gamma;
 };

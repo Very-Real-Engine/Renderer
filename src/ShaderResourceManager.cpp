@@ -1,8 +1,8 @@
 #include "ShaderResourceManager.h"
 
-std::unique_ptr<ShaderResourceManager> ShaderResourceManager::createShaderResourceManager(Scene* scene, VkDescriptorSetLayout descriptorSetLayout) {
+std::unique_ptr<ShaderResourceManager> ShaderResourceManager::createGeometryPassShaderResourceManager(Scene* scene, VkDescriptorSetLayout descriptorSetLayout) {
     std::unique_ptr<ShaderResourceManager> shaderResourceManager = std::unique_ptr<ShaderResourceManager>(new ShaderResourceManager());
-    shaderResourceManager->initShaderResourceManager(scene, descriptorSetLayout);
+    shaderResourceManager->initGeometryPassShaderResourceManager(scene, descriptorSetLayout);
     return shaderResourceManager;
 }
 
@@ -14,19 +14,19 @@ void ShaderResourceManager::cleanup() {
 }
 
 
-void ShaderResourceManager::initShaderResourceManager(Scene* scene, VkDescriptorSetLayout descriptorSetLayout) {
-    createUniformBuffers(scene);
-    createDescriptorSets(scene, descriptorSetLayout);
+void ShaderResourceManager::initGeometryPassShaderResourceManager(Scene* scene, VkDescriptorSetLayout descriptorSetLayout) {
+    createGeometryPassUniformBuffers(scene);
+    createGeometryPassDescriptorSets(scene, descriptorSetLayout);
 }
 
 
-void ShaderResourceManager::createUniformBuffers(Scene* scene) {
+void ShaderResourceManager::createGeometryPassUniformBuffers(Scene* scene) {
     size_t objectCount = scene->getObjectCount();
     if (objectCount == 0) {
         throw std::runtime_error("failed to create uniform buffers!");
     }
     // 유니폼 버퍼에 저장 될 구조체의 크기
-    VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+    VkDeviceSize bufferSize = sizeof(GeometryPassUniformBufferObject);
 
     // 각 요소들을 동시에 처리 가능한 최대 프레임 수만큼 만들어 둔다.
     m_uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT * objectCount);
@@ -39,7 +39,7 @@ void ShaderResourceManager::createUniformBuffers(Scene* scene) {
 }
 
 
-void ShaderResourceManager::createDescriptorSets(Scene* scene, VkDescriptorSetLayout descriptorSetLayout) {
+void ShaderResourceManager::createGeometryPassDescriptorSets(Scene* scene, VkDescriptorSetLayout descriptorSetLayout) {
     auto& context = VulkanContext::getContext();
     VkDevice device = context.getDevice();
     VkDescriptorPool descriptorPool = context.getDescriptorPool();
@@ -74,7 +74,7 @@ void ShaderResourceManager::createDescriptorSets(Scene* scene, VkDescriptorSetLa
             VkDescriptorBufferInfo bufferInfo{};
             bufferInfo.buffer = m_uniformBuffers[i * MAX_FRAMES_IN_FLIGHT + j]->getBuffer();			// 바인딩할 버퍼
             bufferInfo.offset = 0;												// 버퍼에서 데이터 시작 위치 offset
-            bufferInfo.range = sizeof(UniformBufferObject);						// 셰이더가 접근할 버퍼 크기
+            bufferInfo.range = sizeof(GeometryPassUniformBufferObject);						// 셰이더가 접근할 버퍼 크기
 
             std::shared_ptr<Texture> texture = objects[i]->getTexture();
             VkDescriptorImageInfo imageInfo{};								
@@ -108,20 +108,20 @@ void ShaderResourceManager::createDescriptorSets(Scene* scene, VkDescriptorSetLa
 }
 
 
-std::unique_ptr<ShaderResourceManager> ShaderResourceManager::createGammaShaderResourceManager(VkDescriptorSetLayout descriptorSetLayout, VkImageView resolveImageView) {
+std::unique_ptr<ShaderResourceManager> ShaderResourceManager::createLightingPassShaderResourceManager(VkDescriptorSetLayout descriptorSetLayout, VkImageView resolveImageView) {
     std::unique_ptr<ShaderResourceManager> shaderResourceManager = std::unique_ptr<ShaderResourceManager>(new ShaderResourceManager());
-    shaderResourceManager->initGammaShaderResourceManager(descriptorSetLayout, resolveImageView);
+    shaderResourceManager->initLightingPassShaderResourceManager(descriptorSetLayout, resolveImageView);
     return shaderResourceManager;
 }
 
 
-void ShaderResourceManager::initGammaShaderResourceManager(VkDescriptorSetLayout descriptorSetLayout, VkImageView resolveImageView) {
-    createGammaUniformBuffers();
-    createGammaDescriptorSets(descriptorSetLayout, resolveImageView);
+void ShaderResourceManager::initLightingPassShaderResourceManager(VkDescriptorSetLayout descriptorSetLayout, VkImageView resolveImageView) {
+    createLightingPassUniformBuffers();
+    createLightingPassDescriptorSets(descriptorSetLayout, resolveImageView);
 }
 
-void ShaderResourceManager::createGammaUniformBuffers() {
-    VkDeviceSize bufferSize = sizeof(GammaUniformBufferObject);
+void ShaderResourceManager::createLightingPassUniformBuffers() {
+    VkDeviceSize bufferSize = sizeof(LightingPassUniformBufferObject);
 
     m_uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
 
@@ -130,7 +130,7 @@ void ShaderResourceManager::createGammaUniformBuffers() {
     }
 }
 
-void ShaderResourceManager::createGammaDescriptorSets(VkDescriptorSetLayout descriptorSetLayout, VkImageView resolveImageView) {
+void ShaderResourceManager::createLightingPassDescriptorSets(VkDescriptorSetLayout descriptorSetLayout, VkImageView resolveImageView) {
     auto& context = VulkanContext::getContext();
     VkDevice device = context.getDevice();
     VkDescriptorPool descriptorPool = context.getDescriptorPool();
@@ -154,7 +154,7 @@ void ShaderResourceManager::createGammaDescriptorSets(VkDescriptorSetLayout desc
         VkDescriptorBufferInfo bufferInfo{};
         bufferInfo.buffer = m_uniformBuffers[i]->getBuffer();
         bufferInfo.offset = 0;
-        bufferInfo.range = sizeof(GammaUniformBufferObject);
+        bufferInfo.range = sizeof(LightingPassUniformBufferObject);
 
         VkDescriptorImageInfo inputAttachmentInfo{};
         inputAttachmentInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;

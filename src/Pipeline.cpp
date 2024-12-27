@@ -1,8 +1,8 @@
 #include "Pipeline.h"
 
-std::unique_ptr<Pipeline> Pipeline::createPipeline(VkRenderPass renderPass, VkDescriptorSetLayout descriptorSetLayout) {
+std::unique_ptr<Pipeline> Pipeline::createGeometryPassPipeline(VkRenderPass renderPass, VkDescriptorSetLayout descriptorSetLayout) {
     std::unique_ptr<Pipeline> pipeline = std::unique_ptr<Pipeline>(new Pipeline());
-    pipeline->initPipeline(renderPass, descriptorSetLayout);
+    pipeline->initGeometryPassPipeline(renderPass, descriptorSetLayout);
     return pipeline;
 }
 
@@ -16,14 +16,14 @@ void Pipeline::cleanup() {
 }
 
 
-void Pipeline::initPipeline(VkRenderPass renderPass, VkDescriptorSetLayout descriptorSetLayout) {
+void Pipeline::initGeometryPassPipeline(VkRenderPass renderPass, VkDescriptorSetLayout descriptorSetLayout) {
     auto& context = VulkanContext::getContext();
     VkDevice device = context.getDevice();
     VkSampleCountFlagBits msaaSamples = context.getMsaaSamples();
 
     // SPIR-V 파일 읽기
-    std::vector<char> vertShaderCode = VulkanUtil::readFile("./spvs/shader.vert.spv");
-    std::vector<char> fragShaderCode = VulkanUtil::readFile("./spvs/shader.frag.spv");
+    std::vector<char> vertShaderCode = VulkanUtil::readFile("./spvs/GeometryPass.vert.spv");
+    std::vector<char> fragShaderCode = VulkanUtil::readFile("./spvs/GeometryPass.frag.spv");
 
     // shader module 생성
     VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
@@ -152,7 +152,7 @@ void Pipeline::initPipeline(VkRenderPass renderPass, VkDescriptorSetLayout descr
     pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout; 					// 디스크립투 셋 레이아웃
 
     if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
-        throw std::runtime_error("failed to create pipeline layout!");
+        throw std::runtime_error("failed to create GeometryPass pipeline layout!");
     }
 
     // [파이프라인 정보 생성]
@@ -177,7 +177,7 @@ void Pipeline::initPipeline(VkRenderPass renderPass, VkDescriptorSetLayout descr
     // [파이프라인 객체 생성]
     // 두 번째 매개변수는 상속할 파이프라인
     if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline) != VK_SUCCESS) {
-        throw std::runtime_error("failed to create graphics pipeline!");
+        throw std::runtime_error("failed to create GeometryPass graphics pipeline!");
     }
 
     // 쉐이더 모듈 더 안 쓰므로 제거
@@ -208,19 +208,19 @@ VkShaderModule Pipeline::createShaderModule(const std::vector<char>& code) {
 }
 
 
-std::unique_ptr<Pipeline> Pipeline::createGammaPipeline(VkRenderPass renderPass, VkDescriptorSetLayout descriptorSetLayout) {
+std::unique_ptr<Pipeline> Pipeline::createLightingPassPipeline(VkRenderPass renderPass, VkDescriptorSetLayout descriptorSetLayout) {
     std::unique_ptr<Pipeline> pipeline = std::unique_ptr<Pipeline>(new Pipeline());
-    pipeline->initGammaPipeline(renderPass, descriptorSetLayout);
+    pipeline->initLightingPassPipeline(renderPass, descriptorSetLayout);
     return pipeline;
 }
 
-void Pipeline::initGammaPipeline(VkRenderPass renderPass, VkDescriptorSetLayout descriptorSetLayout) {
+void Pipeline::initLightingPassPipeline(VkRenderPass renderPass, VkDescriptorSetLayout descriptorSetLayout) {
      auto& context = VulkanContext::getContext();
     VkDevice device = context.getDevice();
 
     // SPIR-V 셰이더 파일 읽기
-    std::vector<char> vertShaderCode = VulkanUtil::readFile("./spvs/gamma.vert.spv");
-    std::vector<char> fragShaderCode = VulkanUtil::readFile("./spvs/gamma.frag.spv");
+    std::vector<char> vertShaderCode = VulkanUtil::readFile("./spvs/LightingPass.vert.spv");
+    std::vector<char> fragShaderCode = VulkanUtil::readFile("./spvs/LightingPass.frag.spv");
 
     // 셰이더 모듈 생성
     VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
@@ -314,7 +314,7 @@ void Pipeline::initGammaPipeline(VkRenderPass renderPass, VkDescriptorSetLayout 
     pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
 
     if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
-        throw std::runtime_error("Failed to create gamma pipeline layout!");
+        throw std::runtime_error("Failed to create LightingPass pipeline layout!");
     }
 
     // Graphics Pipeline
@@ -335,7 +335,7 @@ void Pipeline::initGammaPipeline(VkRenderPass renderPass, VkDescriptorSetLayout 
     pipelineInfo.subpass = 1;
 
     if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline) != VK_SUCCESS) {
-        throw std::runtime_error("Failed to create gamma pipeline!");
+        throw std::runtime_error("Failed to create LightingPass pipeline!");
     }
 
     vkDestroyShaderModule(device, fragShaderModule, nullptr);

@@ -131,14 +131,14 @@ void RenderPass::initRenderPass(VkFormat swapChainImageFormat) {
 }
 
 
-std::unique_ptr<RenderPass> RenderPass::createGammaRenderPass(VkFormat swapChainImageFormat) {
+std::unique_ptr<RenderPass> RenderPass::createDeferredRenderPass(VkFormat swapChainImageFormat) {
     std::unique_ptr<RenderPass> renderPass = std::unique_ptr<RenderPass>(new RenderPass());
-    renderPass->initGammaRenderPass(swapChainImageFormat);
+    renderPass->initDeferredRenderPass(swapChainImageFormat);
     return renderPass;
 }
 
 
-void RenderPass::initGammaRenderPass(VkFormat swapChainImageFormat) {
+void RenderPass::initDeferredRenderPass(VkFormat swapChainImageFormat) {
     auto& context = VulkanContext::getContext();
     VkDevice device = context.getDevice();
     VkSampleCountFlagBits msaaSamples = context.getMsaaSamples();
@@ -253,6 +253,6 @@ void RenderPass::initGammaRenderPass(VkFormat swapChainImageFormat) {
     renderPassInfo.pDependencies = dependencies.data();
 
     if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS) {
-        throw std::runtime_error("failed to create gamma render pass!");
+        throw std::runtime_error("failed to create deferred render pass!");
     }
 }

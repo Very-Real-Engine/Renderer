@@ -34,33 +34,29 @@ void Renderer::init(GLFWwindow* window) {
     renderFinishedSemaphores = m_syncObjects->getRenderFinishedSemaphores();
     inFlightFences = m_syncObjects->getInFlightFences();
 
-    // m_renderPass = RenderPass::createRenderPass(swapChainImageFormat);
-    // renderPass = m_renderPass->getRenderPass();
+    m_deferredRenderPass = RenderPass::createDeferredRenderPass(swapChainImageFormat);
+    deferredRenderPass = m_deferredRenderPass->getRenderPass();
 
-    m_gammaRenderPass = RenderPass::createGammaRenderPass(swapChainImageFormat);
-    gammaRenderPass = m_gammaRenderPass->getRenderPass();
-
-    m_swapChainFrameBuffers = FrameBuffers::createSwapChainFrameBuffers(m_swapChain.get(), gammaRenderPass);
+    m_swapChainFrameBuffers = FrameBuffers::createSwapChainFrameBuffers(m_swapChain.get(), deferredRenderPass);
     swapChainFramebuffers = m_swapChainFrameBuffers->getFramebuffers();
 
-    m_descriptorSetLayout = DescriptorSetLayout::createDescriptorSetLayout();
-    descriptorSetLayout = m_descriptorSetLayout->getDescriptorSetLayout();
+    m_geometryPassDescriptorSetLayout = DescriptorSetLayout::createGeometryPassDescriptorSetLayout();
+    geometryPassDescriptorSetLayout = m_geometryPassDescriptorSetLayout->getDescriptorSetLayout();
 
-    // gamma
-    m_gammaDescriptorSetLayout = DescriptorSetLayout::createGammaDescriptorSetLayout();
-    gammaDescriptorSetLayout = m_gammaDescriptorSetLayout->getDescriptorSetLayout();
+    m_lightingPassDescriptorSetLayout = DescriptorSetLayout::createLightingPassDescriptorSetLayout();
+    lightingPassDescriptorSetLayout = m_lightingPassDescriptorSetLayout->getDescriptorSetLayout();
 
-    m_gammaShaderResourceManager = ShaderResourceManager::createGammaShaderResourceManager(gammaDescriptorSetLayout, m_swapChainFrameBuffers->getResolveImageView());
-    gammaDescriptorSets = m_gammaShaderResourceManager->getDescriptorSets();
+    m_lightingPassShaderResourceManager = ShaderResourceManager::createLightingPassShaderResourceManager(lightingPassDescriptorSetLayout, m_swapChainFrameBuffers->getResolveImageView());
+    lightingPassDescriptorSets = m_lightingPassShaderResourceManager->getDescriptorSets();
+    lightingPassUniformBuffers = m_lightingPassShaderResourceManager->getUniformBuffers();
 
-    // m_pipeline = Pipeline::createPipeline(renderPass, descriptorSetLayout);
-    m_pipeline = Pipeline::createPipeline(gammaRenderPass, descriptorSetLayout);
-    pipelineLayout = m_pipeline->getPipelineLayout();
-    graphicsPipeline = m_pipeline->getPipeline();
+    m_geometryPassPipeline = Pipeline::createGeometryPassPipeline(deferredRenderPass, geometryPassDescriptorSetLayout);
+    geometryPassPipelineLayout = m_geometryPassPipeline->getPipelineLayout();
+    geometryPassGraphicsPipeline = m_geometryPassPipeline->getPipeline();
 
-    m_gammaPipeline = Pipeline::createGammaPipeline(gammaRenderPass, gammaDescriptorSetLayout);
-    gammaPipelineLayout = m_gammaPipeline->getPipelineLayout();
-    gammaGraphicsPipeline = m_gammaPipeline->getPipeline();
+    m_lightingPassPipeline = Pipeline::createLightingPassPipeline(deferredRenderPass, lightingPassDescriptorSetLayout);
+    lightingPassPipelineLayout = m_lightingPassPipeline->getPipelineLayout();
+    lightingPassGraphicsPipeline = m_lightingPassPipeline->getPipeline();
 
     m_commandBuffers = CommandBuffers::createCommandBuffers();
     commandBuffers = m_commandBuffers->getCommandBuffers();
@@ -72,17 +68,16 @@ void Renderer::cleanup() {
     m_swapChainFrameBuffers->cleanup();
     m_swapChain->cleanup();
 
-    m_pipeline->cleanup();
-    m_gammaPipeline->cleanup();
+    m_geometryPassPipeline->cleanup();
+    m_lightingPassPipeline->cleanup();
 
-    // m_renderPass->cleanup();
-    m_gammaRenderPass->cleanup();
+    m_deferredRenderPass->cleanup();
 
-    m_shaderResourceManager->cleanup();
-    m_gammaShaderResourceManager->cleanup();
+    m_geometryPassShaderResourceManager->cleanup();
+    m_lightingPassShaderResourceManager->cleanup();
 
-    m_descriptorSetLayout->cleanup();
-    m_gammaDescriptorSetLayout->cleanup();
+    m_geometryPassDescriptorSetLayout->cleanup();
+    m_lightingPassDescriptorSetLayout->cleanup();
 
     m_syncObjects->cleanup();
     VulkanContext::getContext().cleanup();
@@ -90,9 +85,9 @@ void Renderer::cleanup() {
 
 
 void Renderer::loadScene(Scene* scene) {
-    m_shaderResourceManager = ShaderResourceManager::createShaderResourceManager(scene, m_descriptorSetLayout->getDescriptorSetLayout());
-    descriptorSets = m_shaderResourceManager->getDescriptorSets();
-    m_uniformBuffers = m_shaderResourceManager->getUniformBuffers();
+    m_geometryPassShaderResourceManager = ShaderResourceManager::createGeometryPassShaderResourceManager(scene, geometryPassDescriptorSetLayout);
+    geometryPassDescriptorSets = m_geometryPassShaderResourceManager->getDescriptorSets();
+    geometryPassUniformBuffers = m_geometryPassShaderResourceManager->getUniformBuffers();
 }
 
 
@@ -126,7 +121,7 @@ void Renderer::drawFrame(Scene* scene) {
     // 커맨드 버퍼 초기화 및 명령 기록
     vkResetCommandBuffer(commandBuffers[currentFrame], /*VkCommandBufferResetFlagBits*/ 0); // 두 번째 매개변수인 Flag 를 0으로 초기화하면 기본 초기화 진행
     // recordCommandBuffer(scene, commandBuffers[currentFrame], imageIndex); // 현재 작업할 image의 index와 commandBuffer를 전송
-    recordGammaCommandBuffer(scene, commandBuffers[currentFrame], imageIndex); // 현재 작업할 image의 index와 commandBuffer를 전송
+    recordDeferredRenderPassCommandBuffer(scene, commandBuffers[currentFrame], imageIndex); // 현재 작업할 image의 index와 commandBuffer를 전송
 
     // [렌더링 Command Buffer 제출]
     // 렌더링 커맨드 버퍼 제출 정보 객체 생성
@@ -232,7 +227,7 @@ void Renderer::recordCommandBuffer(Scene* scene, VkCommandBuffer commandBuffer, 
     vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
     //	[사용할 그래픽 파이프 라인을 설정하는 명령 기록]
-    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, geometryPassGraphicsPipeline);
 
     // 뷰포트 정보 입력
     VkViewport viewport{};
@@ -256,14 +251,14 @@ void Renderer::recordCommandBuffer(Scene* scene, VkCommandBuffer commandBuffer, 
     size_t objectCount = scene->getObjectCount();
 
     for (size_t i = 0; i < objectCount; i++) {
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[MAX_FRAMES_IN_FLIGHT * i + currentFrame], 0, nullptr);
-        UniformBufferObject ubo{};
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, geometryPassPipelineLayout, 0, 1, &geometryPassDescriptorSets[MAX_FRAMES_IN_FLIGHT * i + currentFrame], 0, nullptr);
+        GeometryPassUniformBufferObject ubo{};
         ubo.model = objects[i]->getModelMatrix();
         ubo.view = scene->getViewMatrix();
         ubo.proj = scene->getProjMatrix(swapChainExtent);
         ubo.proj[1][1] *= -1;
         // memcpy(uniformBuffersMapped[currentFrame * objectCount + i], &ubo, sizeof(ubo));
-        m_uniformBuffers[MAX_FRAMES_IN_FLIGHT * i + currentFrame]->updateUniformBuffer(&ubo, sizeof(ubo));
+        geometryPassUniformBuffers[MAX_FRAMES_IN_FLIGHT * i + currentFrame]->updateUniformBuffer(&ubo, sizeof(ubo));
         objects[i]->draw(commandBuffer);
     }
     /*
@@ -315,7 +310,7 @@ void Renderer::recreateSwapChain() {
 }
 
 
-void Renderer::recordGammaCommandBuffer(Scene* scene, VkCommandBuffer commandBuffer, uint32_t imageIndex) {
+void Renderer::recordDeferredRenderPassCommandBuffer(Scene* scene, VkCommandBuffer commandBuffer, uint32_t imageIndex) {
     // 커맨드 버퍼 기록 시작
     VkCommandBufferBeginInfo beginInfo{};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -327,7 +322,7 @@ void Renderer::recordGammaCommandBuffer(Scene* scene, VkCommandBuffer commandBuf
     // 렌더 패스 시작
     VkRenderPassBeginInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    renderPassInfo.renderPass = gammaRenderPass;
+    renderPassInfo.renderPass = deferredRenderPass;
     renderPassInfo.framebuffer = swapChainFramebuffers[imageIndex];
     renderPassInfo.renderArea.offset = {0, 0};
     renderPassInfo.renderArea.extent = swapChainExtent;
@@ -345,7 +340,7 @@ void Renderer::recordGammaCommandBuffer(Scene* scene, VkCommandBuffer commandBuf
     /*
      * 첫 번째 서브패스 - Object 렌더링
      */
-    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, geometryPassGraphicsPipeline);
 
     VkViewport viewport{};
     viewport.x = 0.0f;
@@ -365,13 +360,13 @@ void Renderer::recordGammaCommandBuffer(Scene* scene, VkCommandBuffer commandBuf
     size_t objectCount = scene->getObjectCount();
 
     for (size_t i = 0; i < objectCount; i++) {
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[MAX_FRAMES_IN_FLIGHT * i + currentFrame], 0, nullptr);
-        UniformBufferObject ubo{};
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, geometryPassPipelineLayout, 0, 1, &geometryPassDescriptorSets[MAX_FRAMES_IN_FLIGHT * i + currentFrame], 0, nullptr);
+        GeometryPassUniformBufferObject ubo{};
         ubo.model = objects[i]->getModelMatrix();
         ubo.view = scene->getViewMatrix();
         ubo.proj = scene->getProjMatrix(swapChainExtent);
         ubo.proj[1][1] *= -1;
-        m_uniformBuffers[MAX_FRAMES_IN_FLIGHT * i + currentFrame]->updateUniformBuffer(&ubo, sizeof(ubo));
+        geometryPassUniformBuffers[MAX_FRAMES_IN_FLIGHT * i + currentFrame]->updateUniformBuffer(&ubo, sizeof(ubo));
         objects[i]->draw(commandBuffer);
     }
 
@@ -383,31 +378,30 @@ void Renderer::recordGammaCommandBuffer(Scene* scene, VkCommandBuffer commandBuf
     /*
      * 🌟 두 번째 서브패스 - 감마 보정 (풀스크린 쿼드)
      */
-    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, gammaGraphicsPipeline);
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, lightingPassGraphicsPipeline);
 
     vkCmdBindDescriptorSets(
         commandBuffer,
         VK_PIPELINE_BIND_POINT_GRAPHICS,
-        gammaPipelineLayout,
+        lightingPassPipelineLayout,
         0,
         1,
-        &gammaDescriptorSets[currentFrame],
+        &lightingPassDescriptorSets[currentFrame],
         0,
         nullptr
     );
 
     static float x = 1.0f;
     static float d = 0.005f;
-    GammaUniformBufferObject gammaUbo{};
-    gammaUbo.gamma = x;
+    LightingPassUniformBufferObject lightingPassUbo{};
+    lightingPassUbo.gamma = x;
     x += d;
     if (x > 2.2f) {
         d = -0.005f;
     } else if (x < 1.0f) {
         d = 0.005f;
     }
-    m_gammaShaderResourceManager->getUniformBuffers()[currentFrame]->updateUniformBuffer(&gammaUbo, sizeof(gammaUbo));
-
+    lightingPassUniformBuffers[currentFrame]->updateUniformBuffer(&lightingPassUbo, sizeof(lightingPassUbo));
     // 풀스크린 쿼드 드로우
     vkCmdDraw(commandBuffer, 6, 1, 0, 0);
 
@@ -415,7 +409,7 @@ void Renderer::recordGammaCommandBuffer(Scene* scene, VkCommandBuffer commandBuf
     vkCmdEndRenderPass(commandBuffer);
 
     if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
-        throw std::runtime_error("failed to record gamma command buffer!");
+        throw std::runtime_error("failed to record deferred renderpass command buffer!");
     }
 
 }

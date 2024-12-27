@@ -46,33 +46,34 @@ private:
 	std::unique_ptr<RenderPass> m_renderPass;
 	VkRenderPass renderPass;
 
-	std::unique_ptr<RenderPass> m_gammaRenderPass;
-	VkRenderPass gammaRenderPass;
+	std::unique_ptr<RenderPass> m_deferredRenderPass;
+	VkRenderPass deferredRenderPass;
 
 
-	std::unique_ptr<DescriptorSetLayout> m_descriptorSetLayout;
-	VkDescriptorSetLayout descriptorSetLayout;
-	// gamma
-	std::unique_ptr<DescriptorSetLayout> m_gammaDescriptorSetLayout;
-	VkDescriptorSetLayout gammaDescriptorSetLayout;
+	std::unique_ptr<DescriptorSetLayout> m_geometryPassDescriptorSetLayout;
+	VkDescriptorSetLayout geometryPassDescriptorSetLayout;
+
+	std::unique_ptr<DescriptorSetLayout> m_lightingPassDescriptorSetLayout;
+	VkDescriptorSetLayout lightingPassDescriptorSetLayout;
 
 
-	std::unique_ptr<Pipeline> m_pipeline;
-	VkPipelineLayout pipelineLayout;
-	VkPipeline graphicsPipeline;
+	std::unique_ptr<Pipeline> m_geometryPassPipeline;
+	VkPipelineLayout geometryPassPipelineLayout;
+	VkPipeline geometryPassGraphicsPipeline;
 
-	std::unique_ptr<Pipeline> m_gammaPipeline;
-	VkPipelineLayout gammaPipelineLayout;
-	VkPipeline gammaGraphicsPipeline;
+	std::unique_ptr<Pipeline> m_lightingPassPipeline;
+	VkPipelineLayout lightingPassPipelineLayout;
+	VkPipeline lightingPassGraphicsPipeline;
 
 	VkDescriptorPool descriptorPool;
 
-	std::unique_ptr<ShaderResourceManager> m_shaderResourceManager;
-	std::vector<VkDescriptorSet> descriptorSets;
-	std::vector< std::shared_ptr<UniformBuffer> > m_uniformBuffers;
+	std::unique_ptr<ShaderResourceManager> m_geometryPassShaderResourceManager;
+	std::vector<VkDescriptorSet> geometryPassDescriptorSets;
+	std::vector< std::shared_ptr<UniformBuffer> > geometryPassUniformBuffers;
 	
-	std::unique_ptr<ShaderResourceManager> m_gammaShaderResourceManager;
-	std::vector<VkDescriptorSet> gammaDescriptorSets;
+	std::unique_ptr<ShaderResourceManager> m_lightingPassShaderResourceManager;
+	std::vector<VkDescriptorSet> lightingPassDescriptorSets;
+	std::vector< std::shared_ptr<UniformBuffer> > lightingPassUniformBuffers;
 
 	std::unique_ptr<CommandBuffers> m_commandBuffers;
 
@@ -87,5 +88,5 @@ private:
 
 	void init(GLFWwindow* window);
 	void recordCommandBuffer(Scene* scene, VkCommandBuffer commandBuffer, uint32_t imageIndex);
-	void recordGammaCommandBuffer(Scene* scene, VkCommandBuffer commandBuffer, uint32_t imageIndex);
+	void recordDeferredRenderPassCommandBuffer(Scene* scene, VkCommandBuffer commandBuffer, uint32_t imageIndex);
 };

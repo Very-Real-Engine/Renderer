@@ -5,20 +5,16 @@
 
 class DescriptorSetLayout {
 public:
-	static std::unique_ptr<DescriptorSetLayout> createDescriptorSetLayout();
+	static std::unique_ptr<DescriptorSetLayout> createGeometryPassDescriptorSetLayout();
+	static std::unique_ptr<DescriptorSetLayout> createLightingPassDescriptorSetLayout();
 	~DescriptorSetLayout() {}
 	void cleanup();
-
-	// gamma
-	static std::unique_ptr<DescriptorSetLayout> createGammaDescriptorSetLayout();
 
 	VkDescriptorSetLayout getDescriptorSetLayout() { return descriptorSetLayout; }
 
 private:
 	VkDescriptorSetLayout descriptorSetLayout;
 
-	void initDescriptorSetLayout();
-
-	// gamma
-	void initGammaDescriptorSetLayout();
+	void initGeometryPassDescriptorSetLayout();
+	void initLightingPassDescriptorSetLayout();
 };

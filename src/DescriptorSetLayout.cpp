@@ -1,8 +1,8 @@
 #include "DescriptorSetLayout.h"
 
-std::unique_ptr<DescriptorSetLayout> DescriptorSetLayout::createDescriptorSetLayout() {
+std::unique_ptr<DescriptorSetLayout> DescriptorSetLayout::createGeometryPassDescriptorSetLayout() {
     std::unique_ptr<DescriptorSetLayout> descriptorSetLayout = std::unique_ptr<DescriptorSetLayout>(new DescriptorSetLayout());
-    descriptorSetLayout->initDescriptorSetLayout();
+    descriptorSetLayout->initGeometryPassDescriptorSetLayout();
     return descriptorSetLayout;
 }
 
@@ -15,7 +15,7 @@ void DescriptorSetLayout::cleanup() {
 }
 
 
-void DescriptorSetLayout::initDescriptorSetLayout() {
+void DescriptorSetLayout::initGeometryPassDescriptorSetLayout() {
     auto& context = VulkanContext::getContext();
     VkDevice device = context.getDevice();
 
@@ -47,23 +47,23 @@ void DescriptorSetLayout::initDescriptorSetLayout() {
 }
 
 
-std::unique_ptr<DescriptorSetLayout> DescriptorSetLayout::createGammaDescriptorSetLayout() {
+std::unique_ptr<DescriptorSetLayout> DescriptorSetLayout::createLightingPassDescriptorSetLayout() {
     std::unique_ptr<DescriptorSetLayout> descriptorSetLayout = std::unique_ptr<DescriptorSetLayout>(new DescriptorSetLayout());
-    descriptorSetLayout->initGammaDescriptorSetLayout();
+    descriptorSetLayout->initLightingPassDescriptorSetLayout();
     return descriptorSetLayout;
 }
 
-void DescriptorSetLayout::initGammaDescriptorSetLayout() {
+void DescriptorSetLayout::initLightingPassDescriptorSetLayout() {
     auto& context = VulkanContext::getContext();
     VkDevice device = context.getDevice();
 
 
-    VkDescriptorSetLayoutBinding gammaBufferBinding{};
-    gammaBufferBinding.binding = 0;
-    gammaBufferBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    gammaBufferBinding.descriptorCount = 1;
-    gammaBufferBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-    gammaBufferBinding.pImmutableSamplers = nullptr;
+    VkDescriptorSetLayoutBinding lightingPassBufferBinding{};
+    lightingPassBufferBinding.binding = 0;
+    lightingPassBufferBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    lightingPassBufferBinding.descriptorCount = 1;
+    lightingPassBufferBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    lightingPassBufferBinding.pImmutableSamplers = nullptr;
 
 
     VkDescriptorSetLayoutBinding inputAttachmentBinding{};
@@ -73,7 +73,7 @@ void DescriptorSetLayout::initGammaDescriptorSetLayout() {
     inputAttachmentBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
     inputAttachmentBinding.pImmutableSamplers = nullptr;
 
-    std::array<VkDescriptorSetLayoutBinding, 2> bindings = {gammaBufferBinding, inputAttachmentBinding};
+    std::array<VkDescriptorSetLayoutBinding, 2> bindings = {lightingPassBufferBinding, inputAttachmentBinding};
 
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -81,6 +81,6 @@ void DescriptorSetLayout::initGammaDescriptorSetLayout() {
     layoutInfo.pBindings = bindings.data();
 
     if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
-        throw std::runtime_error("failed to create gamma descriptor set layout!");
+        throw std::runtime_error("failed to create LightingPass descriptor set layout!");
     }
 }
