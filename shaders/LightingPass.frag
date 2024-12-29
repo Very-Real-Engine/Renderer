@@ -15,18 +15,15 @@ layout(location = 0) in vec2 fragTexCoord;
 layout(location = 0) out vec4 outColor;
 
 void main() {
-    // Input Attachment에서 Geometry Pass 데이터 읽기
     vec3 fragPosition = subpassLoad(positionAttachment).rgb;
     vec3 fragNormal = normalize(subpassLoad(normalAttachment).rgb);
     vec3 albedo = subpassLoad(albedoAttachment).rgb;
 
-    // 전부 0인 경우 버림
-    if (fragPosition == vec3(0.0) && fragNormal == vec3(0.0) && albedo == vec3(0.0)) {
-        outColor = vec4(1.0, 0.0, 0.0, 1.0); // test
+    if (gl_FragCoord.z == 1.0) {
+        outColor = vec4(0.0, 0.0, 0.0, 1.0);
         return;
     }
 
-    // 조명 계산
     vec3 lightDir = normalize(lighting.lightPos - fragPosition);
     float diff = max(dot(fragNormal, lightDir), 0.0);
 

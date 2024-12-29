@@ -1,6 +1,5 @@
 #version 450
 
-// 풀 스크린 사각형의 UV 좌표를 전달
 layout(location = 0) out vec2 fragTexCoord;
 
 vec2 positions[6] = vec2[](
