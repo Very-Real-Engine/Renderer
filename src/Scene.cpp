@@ -24,6 +24,12 @@ void Scene::cleanup() {
 
 
 glm::mat4 Scene::getViewMatrix() {
+    m_cameraFront =
+        glm::rotate(glm::mat4(1.0f),
+        glm::radians(m_cameraYaw), glm::vec3(0.0f, 1.0f, 0.0f)) *
+        glm::rotate(glm::mat4(1.0f),
+        glm::radians(m_cameraPitch), glm::vec3(1.0f, 0.0f, 0.0f)) *
+        glm::vec4(0.0f, 0.0f, -1.0f, 0.0f);
     return glm::lookAt(m_cameraPos, m_cameraPos + m_cameraFront, m_cameraUp);
 }
 
@@ -74,4 +80,59 @@ void Scene::initScene() {
     m_lightObject = Object::createObject(m_sphereModel, m_sampleTexture, m_lightPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.1f, 0.1f, 0.1f));
     m_objects.push_back(m_lightObject);
     m_objectCount = m_objects.size();
+}
+
+
+void Scene::processInput(GLFWwindow* window) {
+    if (!m_cameraControl)
+        return;
+    const float cameraSpeed = 0.05f;
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+        m_cameraPos += cameraSpeed * m_cameraFront;
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        m_cameraPos -= cameraSpeed * m_cameraFront;
+
+    auto cameraRight = glm::normalize(glm::cross(m_cameraUp, -m_cameraFront));
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        m_cameraPos += cameraSpeed * cameraRight;
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        m_cameraPos -= cameraSpeed * cameraRight;    
+
+    auto cameraUp = glm::normalize(glm::cross(-m_cameraFront, cameraRight));
+    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
+        m_cameraPos += cameraSpeed * cameraUp;
+    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
+        m_cameraPos -= cameraSpeed * cameraUp;
+}
+
+
+void Scene::mouseMove(double x, double y) {
+    if (!m_cameraControl)
+        return;
+    auto pos = glm::vec2((float)x, (float)y);
+    auto deltaPos = pos - m_prevMousePos;
+
+    const float cameraRotSpeed = 0.8f;
+    m_cameraYaw -= deltaPos.x * cameraRotSpeed;
+    m_cameraPitch -= deltaPos.y * cameraRotSpeed;
+
+    if (m_cameraYaw < 0.0f)   m_cameraYaw += 360.0f;
+    if (m_cameraYaw > 360.0f) m_cameraYaw -= 360.0f;
+
+    if (m_cameraPitch > 89.0f)  m_cameraPitch = 89.0f;
+    if (m_cameraPitch < -89.0f) m_cameraPitch = -89.0f;
+
+    m_prevMousePos = pos;
+}
+
+void Scene::mouseButton(int button, int action, double x, double y) {
+    if (button == GLFW_MOUSE_BUTTON_RIGHT) {
+        if (action == GLFW_PRESS) {
+            m_prevMousePos = glm::vec2((float)x, (float)y);
+            m_cameraControl = true;
+        }
+        else if (action == GLFW_RELEASE) {
+            m_cameraControl = false;
+        }
+    }
 }

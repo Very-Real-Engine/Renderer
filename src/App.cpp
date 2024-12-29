@@ -5,6 +5,7 @@ void App::run() {
     renderer = Renderer::createRenderer(window->getWindow());
     scene = Scene::createScene();
     renderer->loadScene(scene.get());
+    window->bindScene(scene.get());
 
     mainLoop();
     cleanup();
@@ -17,6 +18,7 @@ void App::run() {
 void App::mainLoop() {
     while (!glfwWindowShouldClose(window->getWindow())) {
         glfwPollEvents();
+        scene->processInput(window->getWindow());
         renderer->drawFrame(scene.get());
     }
     vkDeviceWaitIdle(renderer->getDevice());  // 종료시 실행 중인 GPU 작업을 전부 기다림

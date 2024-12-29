@@ -21,6 +21,13 @@ public:
 	glm::mat4 getProjMatrix(VkExtent2D swapChainExtent);
 
 	void updateLightPos(glm::vec3 lightPos);
+	
+	void mouseButton(int button, int action, double x, double y);
+	void mouseMove(double x, double y);
+	void processInput(GLFWwindow* window);
+
+
+
 
 private:
 	Scene() {}
@@ -38,6 +45,9 @@ private:
 	std::vector< std::shared_ptr<Object> > m_objects;
 	std::shared_ptr<Object> m_lightObject;
 
+
+	bool m_cameraControl { false };
+	glm::vec2 m_prevMousePos { 0.0f, 0.0f };
 
 	float m_cameraPitch { 0.0f };
     float m_cameraYaw { 0.0f };

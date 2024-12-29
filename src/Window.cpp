@@ -21,13 +21,38 @@ void Window::initWindow() {
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
     window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Vulkan", nullptr, nullptr);
-    // window에 현재 App 객체를 바인딩
-    glfwSetWindowUserPointer(window, this);
-    // 프레임버퍼 사이즈 변경 콜백 함수 등록
+    // // window에 현재 App 객체를 바인딩
+    // glfwSetWindowUserPointer(window, this);
     glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
+    glfwSetKeyCallback(window, OnKeyEvent);
+    glfwSetCursorPosCallback(window, OnCursorPos);
+    glfwSetMouseButtonCallback(window, OnMouseButton);
+}
+
+
+void Window::bindScene(Scene* scene) {
+    glfwSetWindowUserPointer(window, scene);
 }
 
 
 void Window::framebufferResizeCallback(GLFWwindow* window, int width, int height) {
 
+}
+
+void Window::OnKeyEvent(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+        glfwSetWindowShouldClose(window, true);
+    }
+}
+
+void Window::OnCursorPos(GLFWwindow* window, double x, double y) {
+    auto scene = reinterpret_cast<Scene*>(glfwGetWindowUserPointer(window));
+    scene->mouseMove(x, y);
+}
+
+void Window::OnMouseButton(GLFWwindow* window, int button, int action, int modifier) {
+    auto scene = reinterpret_cast<Scene*>(glfwGetWindowUserPointer(window));
+    double x, y;
+    glfwGetCursorPos(window, &x, &y);
+    scene->mouseButton(button, action, x, y);
 }
