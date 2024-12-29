@@ -8,7 +8,8 @@
 class ShaderResourceManager {
 public:
 	static std::unique_ptr<ShaderResourceManager> createGeometryPassShaderResourceManager(Scene* scene, VkDescriptorSetLayout descriptorSetLayout);
-	static std::unique_ptr<ShaderResourceManager> createLightingPassShaderResourceManager(VkDescriptorSetLayout descriptorSetLayout, VkImageView resolveImageView);
+	static std::unique_ptr<ShaderResourceManager> createLightingPassShaderResourceManager(VkDescriptorSetLayout descriptorSetLayout, 
+	VkImageView positionImageView, VkImageView normalImageView, VkImageView albedoImageView);
 	~ShaderResourceManager() {}
 	void cleanup();
 
@@ -24,7 +25,9 @@ private:
 	void createGeometryPassDescriptorSets(Scene* scene, VkDescriptorSetLayout descriptorSetLayout);
 
 
-	void initLightingPassShaderResourceManager(VkDescriptorSetLayout descriptorSetLayout, VkImageView resolveImageView);
+	void initLightingPassShaderResourceManager(VkDescriptorSetLayout descriptorSetLayout, 
+	VkImageView positionImageView, VkImageView normalImageView, VkImageView albedoImageView);
 	void createLightingPassUniformBuffers();
-	void createLightingPassDescriptorSets(VkDescriptorSetLayout descriptorSetLayout, VkImageView resolveImageView);
+	void createLightingPassDescriptorSets(VkDescriptorSetLayout descriptorSetLayout, 
+	VkImageView positionImageView, VkImageView normalImageView, VkImageView albedoImageView);
 };

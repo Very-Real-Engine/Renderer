@@ -140,22 +140,33 @@ std::unique_ptr<RenderPass> RenderPass::createDeferredRenderPass(VkFormat swapCh
 
 void RenderPass::initDeferredRenderPass(VkFormat swapChainImageFormat) {
     auto& context = VulkanContext::getContext();
-    VkDevice device = context.getDevice();
-    VkSampleCountFlagBits msaaSamples = context.getMsaaSamples();
+    VkDevice device = context.getDevice();    
 
-    VkAttachmentDescription colorAttachment{};
-    colorAttachment.format = swapChainImageFormat;
-    colorAttachment.samples = msaaSamples;
-    colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    colorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; 
+    // Position Attachment
+    VkAttachmentDescription positionAttachment{};
+    positionAttachment.format = VK_FORMAT_R16G16B16A16_SFLOAT;
+    positionAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+    positionAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    positionAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    positionAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    positionAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
+    // Normal Attachment
+    VkAttachmentDescription normalAttachment = positionAttachment;
+
+    // Albedo Attachment
+    VkAttachmentDescription albedoAttachment{};
+    albedoAttachment.format = VK_FORMAT_R8G8B8A8_UNORM;
+    albedoAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+    albedoAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    albedoAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    albedoAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    albedoAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+    // Depth Attachment
     VkAttachmentDescription depthAttachment{};
     depthAttachment.format = VulkanUtil::findDepthFormat();
-    depthAttachment.samples = msaaSamples;
+    depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
     depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
     depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -163,62 +174,46 @@ void RenderPass::initDeferredRenderPass(VkFormat swapChainImageFormat) {
     depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-    VkAttachmentDescription resolveAttachment{};
-    resolveAttachment.format = swapChainImageFormat;
-    resolveAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-    resolveAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    resolveAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    resolveAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    resolveAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    resolveAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    resolveAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
+    // SwapChain Attachment
     VkAttachmentDescription swapChainAttachment{};
     swapChainAttachment.format = swapChainImageFormat;
     swapChainAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
     swapChainAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     swapChainAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    swapChainAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    swapChainAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     swapChainAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     swapChainAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
-    VkAttachmentReference colorAttachmentRef{};
-    colorAttachmentRef.attachment = 0;
-    colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    // Subpass 1 - Geometry Pass
+    VkAttachmentReference positionRef{0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+    VkAttachmentReference normalRef{1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+    VkAttachmentReference albedoRef{2, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+    VkAttachmentReference depthRef{3, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
 
-    VkAttachmentReference depthAttachmentRef{};
-    depthAttachmentRef.attachment = 1;
-    depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-    VkAttachmentReference resolveAttachmentRef{};
-    resolveAttachmentRef.attachment = 2;
-    resolveAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    VkAttachmentReference geometryAttachments[] = {positionRef, normalRef, albedoRef};
 
     VkSubpassDescription subpass1{};
     subpass1.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    subpass1.colorAttachmentCount = 1;
-    subpass1.pColorAttachments = &colorAttachmentRef;
-    subpass1.pDepthStencilAttachment = &depthAttachmentRef;
-    subpass1.pResolveAttachments = &resolveAttachmentRef;
+    subpass1.colorAttachmentCount = 3;
+    subpass1.pColorAttachments = geometryAttachments;
+    subpass1.pDepthStencilAttachment = &depthRef;
 
-    VkAttachmentReference inputAttachmentRef{};
-    inputAttachmentRef.attachment = 2;
-    inputAttachmentRef.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    // Subpass 2 - Lighting Pass
+    VkAttachmentReference positionInputRef{0, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+    VkAttachmentReference normalInputRef{1, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+    VkAttachmentReference albedoInputRef{2, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+    VkAttachmentReference swapChainRef{4, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
 
-    VkAttachmentReference swapChainAttachmentRef{};
-    swapChainAttachmentRef.attachment = 3;
-    swapChainAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    VkAttachmentReference inputAttachments[] = {positionInputRef, normalInputRef, albedoInputRef};
 
     VkSubpassDescription subpass2{};
     subpass2.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    subpass2.inputAttachmentCount = 1;
-    subpass2.pInputAttachments = &inputAttachmentRef;
+    subpass2.inputAttachmentCount = 3;
+    subpass2.pInputAttachments = inputAttachments;
     subpass2.colorAttachmentCount = 1;
-    subpass2.pColorAttachments = &swapChainAttachmentRef;
+    subpass2.pColorAttachments = &swapChainRef;
 
+    // Subpass Dependencies
     std::array<VkSubpassDependency, 2> dependencies{};
-
     dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
     dependencies[0].dstSubpass = 0;
     dependencies[0].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -233,23 +228,21 @@ void RenderPass::initDeferredRenderPass(VkFormat swapChainImageFormat) {
     dependencies[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
     dependencies[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
-    // 🎯 RenderPass 생성
-    std::array<VkAttachmentDescription, 4> attachments = {
-        colorAttachment,
-        depthAttachment,
-        resolveAttachment,
-        swapChainAttachment
+    // Render Pass 생성
+    std::array<VkAttachmentDescription, 5> attachments = {
+        positionAttachment, normalAttachment, albedoAttachment,
+        depthAttachment, swapChainAttachment
     };
 
-    std::array<VkSubpassDescription, 2> subpasses = {subpass1, subpass2};
+    VkSubpassDescription subpasses[] = {subpass1, subpass2};
 
     VkRenderPassCreateInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
     renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
     renderPassInfo.pAttachments = attachments.data();
-    renderPassInfo.subpassCount = static_cast<uint32_t>(subpasses.size());
-    renderPassInfo.pSubpasses = subpasses.data();
-    renderPassInfo.dependencyCount = static_cast<uint32_t>(dependencies.size());
+    renderPassInfo.subpassCount = 2;
+    renderPassInfo.pSubpasses = subpasses;
+    renderPassInfo.dependencyCount = 2;
     renderPassInfo.pDependencies = dependencies.data();
 
     if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS) {

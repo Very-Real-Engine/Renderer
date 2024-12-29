@@ -20,6 +20,8 @@ public:
 	glm::mat4 getViewMatrix();
 	glm::mat4 getProjMatrix(VkExtent2D swapChainExtent);
 
+	void updateLightPos(glm::vec3 lightPos);
+
 private:
 	Scene() {}
 	std::shared_ptr<Model> m_boxModel;
@@ -34,13 +36,15 @@ private:
 	std::shared_ptr<Texture> m_karinaTexture;
 
 	std::vector< std::shared_ptr<Object> > m_objects;
+	std::shared_ptr<Object> m_lightObject;
+
 
 	float m_cameraPitch { 0.0f };
     float m_cameraYaw { 0.0f };
     glm::vec3 m_cameraFront { glm::vec3(0.0f, 0.0f, -1.0f) };
     glm::vec3 m_cameraPos { glm::vec3(0.0f, 0.0f, 5.0f) };
     glm::vec3 m_cameraUp { glm::vec3(0.0f, 1.0f, 0.0f) };
-    glm::vec3 m_lightPos { 0.0f, 10.0f, 0.0f };
+    glm::vec3 m_lightPos { 0.0f, 1.0f, 0.0f };
 	size_t m_objectCount;
 
 	void initScene();

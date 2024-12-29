@@ -13,20 +13,27 @@ public:
 	void initSwapChainFrameBuffers(SwapChain* swapChain, VkRenderPass renderPass);
 
 	std::vector<VkFramebuffer>& getFramebuffers() { return framebuffers; }
-	VkImageView& getColorImageView() { return colorImageView; }
 	VkImageView& getDepthImageView() { return depthImageView; }
-	VkImageView& getResolveImageView() { return resolveImageView; }
+	VkImageView& getPositionImageView() { return positionImageView; }
+	VkImageView& getNormalImageView() { return normalImageView; }
+	VkImageView& getAlbedoImageView() { return albedoImageView; }
 
 private:
-	VkImage colorImage;
-	VkDeviceMemory colorImageMemory;
-	VkImageView colorImageView;
 	VkImage depthImage;
 	VkDeviceMemory depthImageMemory;
 	VkImageView depthImageView;
-	std::vector<VkFramebuffer> framebuffers;
+	
+	VkImage positionImage;
+	VkDeviceMemory positionImageMemory;
+	VkImageView positionImageView;
 
-	VkImage resolveImage;
-	VkDeviceMemory resolveImageMemory;
-	VkImageView resolveImageView;
+	VkImage normalImage;
+	VkDeviceMemory normalImageMemory;
+	VkImageView normalImageView;
+
+	VkImage albedoImage;
+	VkDeviceMemory albedoImageMemory;
+	VkImageView albedoImageView;
+
+	std::vector<VkFramebuffer> framebuffers;
 };

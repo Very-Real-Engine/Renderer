@@ -108,16 +108,18 @@ void ShaderResourceManager::createGeometryPassDescriptorSets(Scene* scene, VkDes
 }
 
 
-std::unique_ptr<ShaderResourceManager> ShaderResourceManager::createLightingPassShaderResourceManager(VkDescriptorSetLayout descriptorSetLayout, VkImageView resolveImageView) {
+std::unique_ptr<ShaderResourceManager> ShaderResourceManager::createLightingPassShaderResourceManager(VkDescriptorSetLayout descriptorSetLayout, 
+    VkImageView positionImageView, VkImageView normalImageView, VkImageView albedoImageView) {
     std::unique_ptr<ShaderResourceManager> shaderResourceManager = std::unique_ptr<ShaderResourceManager>(new ShaderResourceManager());
-    shaderResourceManager->initLightingPassShaderResourceManager(descriptorSetLayout, resolveImageView);
+    shaderResourceManager->initLightingPassShaderResourceManager(descriptorSetLayout, positionImageView, normalImageView, albedoImageView);
     return shaderResourceManager;
 }
 
 
-void ShaderResourceManager::initLightingPassShaderResourceManager(VkDescriptorSetLayout descriptorSetLayout, VkImageView resolveImageView) {
+void ShaderResourceManager::initLightingPassShaderResourceManager(VkDescriptorSetLayout descriptorSetLayout, 
+    VkImageView positionImageView, VkImageView normalImageView, VkImageView albedoImageView) {
     createLightingPassUniformBuffers();
-    createLightingPassDescriptorSets(descriptorSetLayout, resolveImageView);
+    createLightingPassDescriptorSets(descriptorSetLayout, positionImageView, normalImageView, albedoImageView);
 }
 
 void ShaderResourceManager::createLightingPassUniformBuffers() {
@@ -130,7 +132,8 @@ void ShaderResourceManager::createLightingPassUniformBuffers() {
     }
 }
 
-void ShaderResourceManager::createLightingPassDescriptorSets(VkDescriptorSetLayout descriptorSetLayout, VkImageView resolveImageView) {
+void ShaderResourceManager::createLightingPassDescriptorSets(VkDescriptorSetLayout descriptorSetLayout, 
+    VkImageView positionImageView, VkImageView normalImageView, VkImageView albedoImageView) {
     auto& context = VulkanContext::getContext();
     VkDevice device = context.getDevice();
     VkDescriptorPool descriptorPool = context.getDescriptorPool();
@@ -151,32 +154,55 @@ void ShaderResourceManager::createLightingPassDescriptorSets(VkDescriptorSetLayo
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 
+        VkDescriptorImageInfo positionImageInfo{};
+        positionImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        positionImageInfo.imageView = positionImageView;
+        positionImageInfo.sampler = VK_NULL_HANDLE;
+
+        VkDescriptorImageInfo normalImageInfo{};
+        normalImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        normalImageInfo.imageView = normalImageView;
+        normalImageInfo.sampler = VK_NULL_HANDLE;
+
+        VkDescriptorImageInfo albedoImageInfo{};
+        albedoImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        albedoImageInfo.imageView = albedoImageView;
+        albedoImageInfo.sampler = VK_NULL_HANDLE;
+
         VkDescriptorBufferInfo bufferInfo{};
         bufferInfo.buffer = m_uniformBuffers[i]->getBuffer();
         bufferInfo.offset = 0;
         bufferInfo.range = sizeof(LightingPassUniformBufferObject);
 
-        VkDescriptorImageInfo inputAttachmentInfo{};
-        inputAttachmentInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        inputAttachmentInfo.imageView = resolveImageView; // Resolve 이미지 뷰 사용
-        inputAttachmentInfo.sampler = VK_NULL_HANDLE; // Input Attachment는 샘플러 불필요
-
-
-        std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
+        std::array<VkWriteDescriptorSet, 4> descriptorWrites{};
 
         descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrites[0].dstSet = descriptorSets[i];
         descriptorWrites[0].dstBinding = 0;
-        descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
         descriptorWrites[0].descriptorCount = 1;
-        descriptorWrites[0].pBufferInfo = &bufferInfo;
+        descriptorWrites[0].pImageInfo = &positionImageInfo;
 
         descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrites[1].dstSet = descriptorSets[i];
         descriptorWrites[1].dstBinding = 1;
         descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
         descriptorWrites[1].descriptorCount = 1;
-        descriptorWrites[1].pImageInfo = &inputAttachmentInfo;
+        descriptorWrites[1].pImageInfo = &normalImageInfo;
+
+        descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[2].dstSet = descriptorSets[i];
+        descriptorWrites[2].dstBinding = 2;
+        descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+        descriptorWrites[2].descriptorCount = 1;
+        descriptorWrites[2].pImageInfo = &albedoImageInfo;
+
+        descriptorWrites[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[3].dstSet = descriptorSets[i];
+        descriptorWrites[3].dstBinding = 3;
+        descriptorWrites[3].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorWrites[3].descriptorCount = 1;
+        descriptorWrites[3].pBufferInfo = &bufferInfo;
 
         vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
     }

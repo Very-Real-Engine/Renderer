@@ -33,6 +33,12 @@ glm::mat4 Scene::getProjMatrix(VkExtent2D swapChainExtent) {
 }
 
 
+void Scene::updateLightPos(glm::vec3 lightPos) {
+    m_lightPos = lightPos;
+    m_lightObject->setPosition(lightPos);
+}
+
+
 void Scene::initScene() {
     m_boxModel = Model::createBoxModel();
     m_sphereModel = Model::createSphereModel();
@@ -47,20 +53,25 @@ void Scene::initScene() {
     m_catTexture = Texture::createTexture("textures/cat.bmp");
     m_karinaTexture = Texture::createTexture("textures/karina.jpg");
 
+    m_objects.push_back(Object::createObject(m_planeModel, m_karinaTexture, 
+    glm::vec3(0.0f, 0.0f, -3.0f), glm::vec3(0.0f, 0.0f, 180.0f), glm::vec3(5.0f * 0.74f, 5.0f, 1.0f)));
+
     m_objects.push_back(Object::createObject(m_boxModel, m_sampleTexture, 
     glm::vec3(-2.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f)));
 
     m_objects.push_back(Object::createObject(m_vikingModel, m_vikingTexture, 
-    glm::vec3(2.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f)));
+    glm::vec3(0.0f, -0.3f, 0.0f), glm::vec3(-90.0f, 0.0f, -90.0f), glm::vec3(1.0f, 1.0f, 1.0f)));
 
     m_objects.push_back(Object::createObject(m_sphereModel, m_vikingTexture, 
     glm::vec3(0.3f, 1.3f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f)));
-
-    m_objects.push_back(Object::createObject(m_planeModel, m_karinaTexture, 
-    glm::vec3(0.0f, 0.0f, -3.0f), glm::vec3(0.0f, 0.0f, 180.0f), glm::vec3(5.0f * 0.74f, 5.0f, 1.0f)));
     
     m_objects.push_back(Object::createObject(m_catModel, m_catTexture, 
     glm::vec3(0.5f, 0.0f, 0.0f), glm::vec3(-90.0f, 0.0f, 45.0f), glm::vec3(0.01f, 0.01f, 0.01f)));
 
+    m_objects.push_back(Object::createObject(m_boxModel, m_sampleTexture,
+    glm::vec3(2.0f, -0.5f, 0.0f), glm::vec3(30.0f, 0.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f)));
+
+    m_lightObject = Object::createObject(m_sphereModel, m_sampleTexture, m_lightPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.1f, 0.1f, 0.1f));
+    m_objects.push_back(m_lightObject);
     m_objectCount = m_objects.size();
 }

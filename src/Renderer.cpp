@@ -46,7 +46,8 @@ void Renderer::init(GLFWwindow* window) {
     m_lightingPassDescriptorSetLayout = DescriptorSetLayout::createLightingPassDescriptorSetLayout();
     lightingPassDescriptorSetLayout = m_lightingPassDescriptorSetLayout->getDescriptorSetLayout();
 
-    m_lightingPassShaderResourceManager = ShaderResourceManager::createLightingPassShaderResourceManager(lightingPassDescriptorSetLayout, m_swapChainFrameBuffers->getResolveImageView());
+    m_lightingPassShaderResourceManager = ShaderResourceManager::createLightingPassShaderResourceManager(lightingPassDescriptorSetLayout, 
+    m_swapChainFrameBuffers->getPositionImageView(), m_swapChainFrameBuffers->getNormalImageView(), m_swapChainFrameBuffers->getAlbedoImageView());
     lightingPassDescriptorSets = m_lightingPassShaderResourceManager->getDescriptorSets();
     lightingPassUniformBuffers = m_lightingPassShaderResourceManager->getUniformBuffers();
 
@@ -85,6 +86,7 @@ void Renderer::cleanup() {
 
 
 void Renderer::loadScene(Scene* scene) {
+    this->scene = scene;
     m_geometryPassShaderResourceManager = ShaderResourceManager::createGeometryPassShaderResourceManager(scene, geometryPassDescriptorSetLayout);
     geometryPassDescriptorSets = m_geometryPassShaderResourceManager->getDescriptorSets();
     geometryPassUniformBuffers = m_geometryPassShaderResourceManager->getUniformBuffers();
@@ -294,7 +296,12 @@ void Renderer::recreateSwapChain() {
     vkDeviceWaitIdle(device);
 
     // 스왑 체인 관련 리소스 정리
+    m_geometryPassShaderResourceManager->cleanup();
+    m_lightingPassShaderResourceManager->cleanup();
+    m_geometryPassPipeline->cleanup();
+    m_lightingPassPipeline->cleanup();
     m_swapChainFrameBuffers->cleanup();
+    m_deferredRenderPass->cleanup();
     m_swapChain->recreateSwapChain();
 
     // 현재 window 크기에 맞게 SwapChain, DepthResource, ImageView, FrameBuffer 재생성
@@ -304,9 +311,28 @@ void Renderer::recreateSwapChain() {
     swapChainExtent = m_swapChain->getSwapChainExtent();
     swapChainImageViews = m_swapChain->getSwapChainImageViews();
 
+    m_deferredRenderPass = RenderPass::createDeferredRenderPass(swapChainImageFormat);
+    deferredRenderPass = m_deferredRenderPass->getRenderPass();
 
-    m_swapChainFrameBuffers->initSwapChainFrameBuffers(m_swapChain.get(), renderPass);
+    m_swapChainFrameBuffers->initSwapChainFrameBuffers(m_swapChain.get(), deferredRenderPass);
     swapChainFramebuffers = m_swapChainFrameBuffers->getFramebuffers();
+
+    m_geometryPassPipeline = Pipeline::createGeometryPassPipeline(deferredRenderPass, geometryPassDescriptorSetLayout);
+    geometryPassPipelineLayout = m_geometryPassPipeline->getPipelineLayout();
+    geometryPassGraphicsPipeline = m_geometryPassPipeline->getPipeline();
+
+    m_lightingPassPipeline = Pipeline::createLightingPassPipeline(deferredRenderPass, lightingPassDescriptorSetLayout);
+    lightingPassPipelineLayout = m_lightingPassPipeline->getPipelineLayout();
+    lightingPassGraphicsPipeline = m_lightingPassPipeline->getPipeline();
+
+    m_geometryPassShaderResourceManager = ShaderResourceManager::createGeometryPassShaderResourceManager(scene, geometryPassDescriptorSetLayout);
+    geometryPassDescriptorSets = m_geometryPassShaderResourceManager->getDescriptorSets();
+    geometryPassUniformBuffers = m_geometryPassShaderResourceManager->getUniformBuffers();
+
+    m_lightingPassShaderResourceManager = ShaderResourceManager::createLightingPassShaderResourceManager(lightingPassDescriptorSetLayout,
+    m_swapChainFrameBuffers->getPositionImageView(), m_swapChainFrameBuffers->getNormalImageView(), m_swapChainFrameBuffers->getAlbedoImageView());
+    lightingPassDescriptorSets = m_lightingPassShaderResourceManager->getDescriptorSets();
+    lightingPassUniformBuffers = m_lightingPassShaderResourceManager->getUniformBuffers();
 }
 
 
@@ -327,9 +353,13 @@ void Renderer::recordDeferredRenderPassCommandBuffer(Scene* scene, VkCommandBuff
     renderPassInfo.renderArea.offset = {0, 0};
     renderPassInfo.renderArea.extent = swapChainExtent;
 
-    std::array<VkClearValue, 2> clearValues{};
-    clearValues[0].color = {{0.0f, 0.0f, 0.0f, 1.0f}};
-    clearValues[1].depthStencil = {1.0f, 0};
+    // ClearValues 수정
+    std::array<VkClearValue, 5> clearValues{};
+    clearValues[0].color = {0.0f, 0.0f, 0.0f, 1.0f};
+    clearValues[1].color = {0.0f, 0.0f, 0.0f, 1.0f};
+    clearValues[2].color = {0.0f, 0.0f, 0.0f, 1.0f};
+    clearValues[3].depthStencil = {1.0f, 0};
+    clearValues[4].color = {0.0f, 0.0f, 0.0f, 1.0f};
 
     renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
     renderPassInfo.pClearValues = clearValues.data();
@@ -358,6 +388,18 @@ void Renderer::recordDeferredRenderPassCommandBuffer(Scene* scene, VkCommandBuff
 
     const std::vector<std::shared_ptr<Object>>& objects = scene->getObjects();
     size_t objectCount = scene->getObjectCount();
+
+    static float x = 0.0f;
+    static float d = 0.005f;
+    if (x > 2.0f) {
+        d = -0.005f;
+    } else if (x < -2.0f) {
+        d = 0.005f;
+    }
+    x += d;
+
+    scene->updateLightPos(glm::vec3(x, 1.5f, 0.0f));
+    // std::cout << "Light Pos: " << scene->getLightPos().x << ", " << scene->getLightPos().y << ", " << scene->getLightPos().z << std::endl;
 
     for (size_t i = 0; i < objectCount; i++) {
         vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, geometryPassPipelineLayout, 0, 1, &geometryPassDescriptorSets[MAX_FRAMES_IN_FLIGHT * i + currentFrame], 0, nullptr);
@@ -391,16 +433,12 @@ void Renderer::recordDeferredRenderPassCommandBuffer(Scene* scene, VkCommandBuff
         nullptr
     );
 
-    static float x = 1.0f;
-    static float d = 0.005f;
     LightingPassUniformBufferObject lightingPassUbo{};
-    lightingPassUbo.gamma = x;
-    x += d;
-    if (x > 2.2f) {
-        d = -0.005f;
-    } else if (x < 1.0f) {
-        d = 0.005f;
-    }
+    // lightingPassUbo.lightPos = scene->getLightPos();
+    lightingPassUbo.lightPos = scene->getLightPos();
+    lightingPassUbo.lightColor = glm::vec3(1.0f, 1.0f, 1.0f);
+    lightingPassUbo.cameraPos = scene->getCamPos();
+
     lightingPassUniformBuffers[currentFrame]->updateUniformBuffer(&lightingPassUbo, sizeof(lightingPassUbo));
     // 풀스크린 쿼드 드로우
     vkCmdDraw(commandBuffer, 6, 1, 0, 0);

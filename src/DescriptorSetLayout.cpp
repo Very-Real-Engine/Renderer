@@ -57,24 +57,35 @@ void DescriptorSetLayout::initLightingPassDescriptorSetLayout() {
     auto& context = VulkanContext::getContext();
     VkDevice device = context.getDevice();
 
+    VkDescriptorSetLayoutBinding inputAttachmentBinding0{};
+    inputAttachmentBinding0.binding = 0;
+    inputAttachmentBinding0.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+    inputAttachmentBinding0.descriptorCount = 1;
+    inputAttachmentBinding0.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    inputAttachmentBinding0.pImmutableSamplers = nullptr;
+
+    VkDescriptorSetLayoutBinding inputAttachmentBinding1{};
+    inputAttachmentBinding1.binding = 1;
+    inputAttachmentBinding1.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+    inputAttachmentBinding1.descriptorCount = 1;
+    inputAttachmentBinding1.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    inputAttachmentBinding1.pImmutableSamplers = nullptr;
+
+    VkDescriptorSetLayoutBinding inputAttachmentBinding2{};
+    inputAttachmentBinding2.binding = 2;
+    inputAttachmentBinding2.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+    inputAttachmentBinding2.descriptorCount = 1;
+    inputAttachmentBinding2.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    inputAttachmentBinding2.pImmutableSamplers = nullptr;
 
     VkDescriptorSetLayoutBinding lightingPassBufferBinding{};
-    lightingPassBufferBinding.binding = 0;
+    lightingPassBufferBinding.binding = 3;
     lightingPassBufferBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     lightingPassBufferBinding.descriptorCount = 1;
     lightingPassBufferBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
     lightingPassBufferBinding.pImmutableSamplers = nullptr;
 
-
-    VkDescriptorSetLayoutBinding inputAttachmentBinding{};
-    inputAttachmentBinding.binding = 1;
-    inputAttachmentBinding.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
-    inputAttachmentBinding.descriptorCount = 1;
-    inputAttachmentBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-    inputAttachmentBinding.pImmutableSamplers = nullptr;
-
-    std::array<VkDescriptorSetLayoutBinding, 2> bindings = {lightingPassBufferBinding, inputAttachmentBinding};
-
+    std::array<VkDescriptorSetLayoutBinding, 4> bindings = {inputAttachmentBinding0, inputAttachmentBinding1, inputAttachmentBinding2, lightingPassBufferBinding};
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());

@@ -117,5 +117,7 @@ struct GeometryPassUniformBufferObject {
 };
 
 struct LightingPassUniformBufferObject {
-	alignas(16) float gamma;
+	alignas(16) glm::vec3 lightPos;
+	alignas(16) glm::vec3 lightColor;
+	alignas(16) glm::vec3 cameraPos;
 };

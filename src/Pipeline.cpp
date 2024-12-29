@@ -19,8 +19,6 @@ void Pipeline::cleanup() {
 void Pipeline::initGeometryPassPipeline(VkRenderPass renderPass, VkDescriptorSetLayout descriptorSetLayout) {
     auto& context = VulkanContext::getContext();
     VkDevice device = context.getDevice();
-    VkSampleCountFlagBits msaaSamples = context.getMsaaSamples();
-
     // SPIR-V 파일 읽기
     std::vector<char> vertShaderCode = VulkanUtil::readFile("./spvs/GeometryPass.vert.spv");
     std::vector<char> fragShaderCode = VulkanUtil::readFile("./spvs/GeometryPass.frag.spv");
@@ -99,11 +97,9 @@ void Pipeline::initGeometryPassPipeline(VkRenderPass renderPass, VkDescriptorSet
     // [멀티 샘플링 설정]
     VkPipelineMultisampleStateCreateInfo multisampling{};
     multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-    multisampling.sampleShadingEnable = VK_TRUE; 		// VK_TRUE: 프레그먼트 셰이더 단계(음영 계산)부터 샘플별로 계산 후 최종 결과 평균내서 사용 
-                                                        // VK_FALSE: 테스트&블랜딩 단계부터 샘플별로 계산 후 최종 결과 평균내서 사용 (음영 계산은 동일한 값) 
-    multisampling.minSampleShading = 0.2f; 				// 샘플 셰이딩의 최소 비율; 값이 1에 가까울수록 더 부드러워짐
-    multisampling.rasterizationSamples = msaaSamples; 	// 픽셀당 샘플 개수 설정
-
+    multisampling.sampleShadingEnable = VK_FALSE;
+    multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+ 
     // [depth test]
     VkPipelineDepthStencilStateCreateInfo depthStencil{};
     depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
@@ -113,20 +109,26 @@ void Pipeline::initGeometryPassPipeline(VkRenderPass renderPass, VkDescriptorSet
     depthStencil.depthBoundsTestEnable = VK_FALSE;		// 깊이 범위 테스트 활성화 여부를 지정
     depthStencil.stencilTestEnable = VK_FALSE;			// 스텐실 테스트 활성화 여부를 지정
 
-    // [블랜딩 설정]
-    // attachment 별 블랜딩 설정 (블랜딩 + 프레임 버퍼 기록 설정)
-    VkPipelineColorBlendAttachmentState colorBlendAttachment{};
-    // 프레임 버퍼에 RGBA 값 쓰기 가능 모드 설정 (설정 안 하면 색 수정 x)
-    colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-    colorBlendAttachment.blendEnable = VK_FALSE; // 블랜드 기능 off (블랜드 기능 on 시 추가적인 설정 필요)
-    // 파이프라인 전체 블랜딩 설정 (attachment 블랜딩 설정 추가)
+
+    std::array<VkPipelineColorBlendAttachmentState, 3> colorBlendAttachments = {};
+    // position attachment
+    colorBlendAttachments[0].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    colorBlendAttachments[0].blendEnable = VK_FALSE;
+
+    // normal attachment
+    colorBlendAttachments[1].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    colorBlendAttachments[1].blendEnable = VK_FALSE;
+
+    // albedo attachment
+    colorBlendAttachments[2].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    colorBlendAttachments[2].blendEnable = VK_FALSE;
+
     VkPipelineColorBlendStateCreateInfo colorBlending{};
     colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-    colorBlending.logicOpEnable = VK_FALSE; // 논리 연산 블랜딩 off (블랜딩 대신 논리적 연산을 통해 색을 조합하는 방법으로, 사용시 블렌딩 적용 x)
-    colorBlending.logicOp = VK_LOGIC_OP_COPY; // 논리 연산 없이 그냥 전체 복사 (논리 연산 블랜딩이 off면 안 쓰임)
-    colorBlending.attachmentCount = 1; // attachment 별 블랜딩 설정 개수
-    colorBlending.pAttachments = &colorBlendAttachment; // attachment 별 블랜딩 설정 배열
-    // 블랜딩 연산에 사용하는 변수 값 4개 설정 (모든 attachment에 공통으로 사용)
+    colorBlending.logicOpEnable = VK_FALSE;
+    colorBlending.logicOp = VK_LOGIC_OP_COPY;
+    colorBlending.attachmentCount = static_cast<uint32_t>(colorBlendAttachments.size());
+    colorBlending.pAttachments = colorBlendAttachments.data();
     colorBlending.blendConstants[0] = 0.0f;
     colorBlending.blendConstants[1] = 0.0f;
     colorBlending.blendConstants[2] = 0.0f;

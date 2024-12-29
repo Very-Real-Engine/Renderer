@@ -14,7 +14,8 @@ public:
 
 	glm::mat4 getModelMatrix();
 	const std::shared_ptr<Texture>& getTexture() { return m_texture; }
-
+	void setPosition(glm::vec3 position) { m_position = position; }
+	
 private:
 	Object() {}
 

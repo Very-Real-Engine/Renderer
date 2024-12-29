@@ -26,6 +26,8 @@ public:
 private:
 	Renderer() {}
 
+	Scene *scene;
+
 	GLFWwindow* window;
 	VkSurfaceKHR surface;
 	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
